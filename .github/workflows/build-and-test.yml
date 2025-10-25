@@ -77,7 +77,12 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: edmcoverlay-build
-        path: ./publish/
+        path: |
+          ./publish/EDMCOverlay.exe
+          ./publish/EDMCOverlay.dll
+          ./publish/*.dll
+          ./publish/*.config
+          ./publish/*.json
         retention-days: 30
 
   security-scan:
@@ -182,20 +187,57 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: edmcoverlay-build
-        path: ./release/
+        path: ./build-artifacts/
         
-    - name: Create release package
+    - name: Create release package structure
+      run: |
+        # Create release directory
+        New-Item -ItemType Directory -Force -Path "./release"
+        
+        # Copy Python plugin files to root of release
+        Copy-Item -Path "load.py" -Destination "./release/"
+        Copy-Item -Path "edmcoverlay.py" -Destination "./release/"
+        Copy-Item -Path "edmcoverlay_improved.py" -Destination "./release/"
+        Copy-Item -Path "config.py" -Destination "./release/"
+        Copy-Item -Path "performance_monitor.py" -Destination "./release/"
+        Copy-Item -Path "__init__.py" -Destination "./release/" -ErrorAction SilentlyContinue
+        
+        # Copy the built EDMCOverlay.exe from artifacts
+        Copy-Item -Path "./build-artifacts/EDMCOverlay.exe" -Destination "./release/" -ErrorAction SilentlyContinue
+        Copy-Item -Path "./build-artifacts/EDMCOverlay.dll" -Destination "./release/" -ErrorAction SilentlyContinue
+        Copy-Item -Path "./build-artifacts/*.dll" -Destination "./release/" -ErrorAction SilentlyContinue
+        Copy-Item -Path "./build-artifacts/*.config" -Destination "./release/" -ErrorAction SilentlyContinue
+        
+        # Copy documentation and metadata
+        Copy-Item -Path "README.md" -Destination "./release/" -ErrorAction SilentlyContinue
+        Copy-Item -Path "LICENCE.md" -Destination "./release/" -ErrorAction SilentlyContinue
+        Copy-Item -Path "requirements.txt" -Destination "./release/" -ErrorAction SilentlyContinue
+        
+        # Copy any additional assets
+        Copy-Item -Path "edmc-overlay-logo.bmp" -Destination "./release/" -ErrorAction SilentlyContinue
+        Copy-Item -Path "edmcoverlay-rootca.cer" -Destination "./release/" -ErrorAction SilentlyContinue
+        
+        # List the final release structure
+        Write-Host "Release package structure:"
+        Get-ChildItem -Path "./release" -Recurse | Format-Table Name, Length, LastWriteTime
+      shell: powershell
+      
+    - name: Create release archive
       run: |
         Compress-Archive -Path "./release/*" -DestinationPath "EDMCOverlay-${{ github.event.release.tag_name }}.zip"
+        Write-Host "Created release archive: EDMCOverlay-${{ github.event.release.tag_name }}.zip"
+        Write-Host "Archive size: $((Get-Item "EDMCOverlay-${{ github.event.release.tag_name }}.zip").Length) bytes"
       shell: powershell
       
     - name: Upload release asset
       uses: softprops/action-gh-release@v1
       with:
         files: ./EDMCOverlay-${{ github.event.release.tag_name }}.zip
+        generate_release_notes: true
+        draft: false
+        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        asset_content_type: application/zip
 
   notify:
     name: Notify Results
