@@ -1,0 +1,20 @@
+# EDMCOverlay Development Dependencies
+# Only for development - not needed for production
+
+# Enhanced testing
+pytest-xdist>=3.5.0        # Parallel test execution
+pytest-benchmark>=4.0.0    # Performance testing
+pytest-html>=4.1.1         # HTML test reports
+
+# Advanced code quality
+pylint>=3.0.0              # Additional linting
+vulture>=2.10               # Dead code detection
+complexity>=0.1.2           # Complexity analysis
+
+# Documentation
+sphinx>=7.2.0              # Documentation generation
+sphinx-rtd-theme>=2.0.0    # Read the Docs theme
+
+# CI/CD helpers
+tox>=4.11.0                 # Test automation
+pre-commit>=3.6.0          # Git hooks
