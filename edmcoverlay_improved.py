@@ -4,16 +4,16 @@ Enhanced Client library for EDMCOverlay with improved error handling and securit
 
 from __future__ import print_function
 
-import sys
-import socket
 import json
-import os
-import subprocess
-import time
-import threading
 import logging
+import os
+import socket
+import subprocess
+import sys
+import threading
+import time
 from contextlib import contextmanager
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 # Configuration
 DEFAULT_SERVER_ADDRESS = "127.0.0.1"
@@ -40,6 +40,7 @@ def trace(msg):
     logger.info(f"Trace: {msg}")
     return msg
 
+
 try:
     import monitor
 except ImportError:
@@ -48,11 +49,13 @@ except ImportError:
 
 class OverlayConnectionError(Exception):
     """Exception raised when overlay connection fails"""
+
     pass
 
 
 class OverlayServiceError(Exception):
     """Exception raised when overlay service fails to start"""
+
     pass
 
 
@@ -68,7 +71,7 @@ def trace(msg: str) -> str:
 
 class ServiceManager:
     """Manages the overlay service lifecycle"""
-    
+
     def __init__(self):
         self._service: Optional[subprocess.Popen] = None
         self._lock = threading.Lock()
@@ -88,13 +91,13 @@ class ServiceManager:
             os.path.join(HERE, "EDMCOverlay", "EDMCOverlay", "bin", "Release", PROG),
             os.path.join(HERE, "EDMCOverlay", "EDMCOverlay", "bin", "Debug", PROG),
         ]
-        
+
         for path in locations:
             if os.path.isfile(path):
                 trace(f"exe found at {path}")
                 self._program_path = path
                 return path
-        
+
         return None
 
     def check_game_running(self) -> bool:
@@ -144,21 +147,25 @@ class ServiceManager:
                     trace(f"Starting {program} with {args}")
                     prog_args = [program] + args
                     self._service = subprocess.Popen(
-                        prog_args, 
+                        prog_args,
                         cwd=exedir,
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE
+                        stderr=subprocess.PIPE,
                     )
-                    
+
                     # Wait a bit for service to start
                     time.sleep(2)
-                    
+
                     # Check if service started successfully
                     if self._service.poll() is not None:
                         stdout, stderr = self._service.communicate()
-                        error_msg = f"{program} exited with code {self._service.returncode}"
+                        error_msg = (
+                            f"{program} exited with code {self._service.returncode}"
+                        )
                         if stderr:
-                            error_msg += f", stderr: {stderr.decode('utf-8', errors='ignore')}"
+                            error_msg += (
+                                f", stderr: {stderr.decode('utf-8', errors='ignore')}"
+                            )
                         raise OverlayServiceError(error_msg)
 
             except Exception as err:
@@ -190,7 +197,12 @@ class Overlay:
     Enhanced client for EDMCOverlay with improved error handling and connection management
     """
 
-    def __init__(self, server: str = DEFAULT_SERVER_ADDRESS, port: int = DEFAULT_SERVER_PORT, args: List[str] = None):
+    def __init__(
+        self,
+        server: str = DEFAULT_SERVER_ADDRESS,
+        port: int = DEFAULT_SERVER_PORT,
+        args: List[str] = None,
+    ):
         self.server = server
         self.port = port
         self.args = args or []
@@ -222,15 +234,21 @@ class Overlay:
                     connection.settimeout(CONNECT_TIMEOUT)
                     connection.connect((self.server, self.port))
                     self.connection = connection
-                    logger.debug(f"Connected to overlay server at {self.server}:{self.port}")
+                    logger.debug(
+                        f"Connected to overlay server at {self.server}:{self.port}"
+                    )
                     return
-                
+
                 except (socket.timeout, ConnectionRefusedError, OSError) as e:
                     if attempt < RECONNECT_ATTEMPTS - 1:
-                        logger.warning(f"Connection attempt {attempt + 1} failed: {e}, retrying...")
+                        logger.warning(
+                            f"Connection attempt {attempt + 1} failed: {e}, retrying..."
+                        )
                         time.sleep(RECONNECT_DELAY)
                     else:
-                        raise OverlayConnectionError(f"Failed to connect after {RECONNECT_ATTEMPTS} attempts: {e}")
+                        raise OverlayConnectionError(
+                            f"Failed to connect after {RECONNECT_ATTEMPTS} attempts: {e}"
+                        )
 
     def disconnect(self) -> None:
         """Close the connection"""
@@ -256,16 +274,16 @@ class Overlay:
                 # Validate and sanitize the message
                 sanitized_msg = self._sanitize_message(msg)
                 data = json.dumps(sanitized_msg, ensure_ascii=True)
-                
+
                 if sys.version_info.major >= 3:
                     conn.send(data.encode("utf-8"))
                     conn.send(b"\n")
                 else:
                     conn.send(data)
                     conn.send("\n")
-                
+
                 logger.debug(f"Sent message: {sanitized_msg}")
-                
+
         except (BrokenPipeError, ConnectionResetError):
             self.disconnect()
             raise OverlayConnectionError("Connection lost")
@@ -280,41 +298,50 @@ class Overlay:
         :return: Sanitized message
         """
         sanitized = {}
-        
+
         # Whitelist of allowed keys and their types
         allowed_fields = {
-            'id': (str, int),
-            'text': str,
-            'color': str,
-            'size': str,
-            'x': (int, float),
-            'y': (int, float),
-            'ttl': (int, float),
-            'shape': str,
-            'fill': str,
-            'w': (int, float),
-            'h': (int, float),
-            'command': str
+            "id": (str, int),
+            "text": str,
+            "color": str,
+            "size": str,
+            "x": (int, float),
+            "y": (int, float),
+            "ttl": (int, float),
+            "shape": str,
+            "fill": str,
+            "w": (int, float),
+            "h": (int, float),
+            "command": str,
         }
-        
+
         for key, value in msg.items():
             if key in allowed_fields:
                 expected_types = allowed_fields[key]
                 if not isinstance(expected_types, tuple):
                     expected_types = (expected_types,)
-                
+
                 if isinstance(value, expected_types):
                     # Additional validation for specific fields
-                    if key in ['text', 'color', 'size', 'shape', 'fill', 'command']:
+                    if key in ["text", "color", "size", "shape", "fill", "command"]:
                         # Limit string length and remove potentially dangerous characters
                         if isinstance(value, str):
                             sanitized[key] = str(value)[:1000]  # Limit length
                     else:
                         sanitized[key] = value
-        
+
         return sanitized
 
-    def send_message(self, msgid: str, text: str, color: str, x: int, y: int, ttl: int = 4, size: str = "normal") -> None:
+    def send_message(
+        self,
+        msgid: str,
+        text: str,
+        color: str,
+        x: int,
+        y: int,
+        ttl: int = 4,
+        size: str = "normal",
+    ) -> None:
         """
         Send a text message to the overlay
         """
@@ -329,11 +356,22 @@ class Overlay:
             "size": size,
             "x": x,
             "y": y,
-            "ttl": ttl
+            "ttl": ttl,
         }
         self.send_raw(msg)
 
-    def send_shape(self, shapeid: str, shape: str, color: str, fill: str, x: int, y: int, w: int, h: int, ttl: int) -> None:
+    def send_shape(
+        self,
+        shapeid: str,
+        shape: str,
+        color: str,
+        fill: str,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        ttl: int,
+    ) -> None:
         """
         Send a shape to the overlay
         """
@@ -350,7 +388,7 @@ class Overlay:
             "y": y,
             "w": w,
             "h": h,
-            "ttl": ttl
+            "ttl": ttl,
         }
         self.send_raw(msg)
 
@@ -379,6 +417,7 @@ def debugconsole():
     Interactive debug console for testing
     """
     import load as loader
+
     loader.plugin_start()
 
     with Overlay() as cl:
@@ -386,7 +425,7 @@ def debugconsole():
         try:
             while True:
                 line = input("> ").strip()
-                if line.lower() in ['exit', 'quit']:
+                if line.lower() in ["exit", "quit"]:
                     break
                 cl.send_message("debug", line, "red", 100, 100)
         except KeyboardInterrupt:
@@ -398,10 +437,12 @@ def debugconsole():
 # Global overlay instance for backward compatibility
 internal = Overlay()
 
+
 # Expose service manager functions for backward compatibility
 def ensure_service(args: List[str] = None) -> None:
     """Ensure overlay service is running"""
     _service_manager.ensure_service(args)
+
 
 def stop_service() -> None:
     """Stop overlay service"""

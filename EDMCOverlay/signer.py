@@ -3,11 +3,11 @@
 Prompt for a password for signtool
 """
 
-import subprocess
-import sys
 import getpass
 import os
 import shutil
+import subprocess
+import sys
 
 from Tkinter import *
 
@@ -15,7 +15,7 @@ from Tkinter import *
 def getpwd(prompt):
     store = {}
     root = Tk()
-    pwdbox = Entry(root, show='*')
+    pwdbox = Entry(root, show="*")
 
     def onpwdentry(evt):
         store["pass"] = pwdbox.get()
@@ -24,19 +24,26 @@ def getpwd(prompt):
     def onokclick():
         onpwdentry(None)
 
-    Label(root, text=prompt).pack(side='top')
+    Label(root, text=prompt).pack(side="top")
 
-    pwdbox.pack(side='top')
-    pwdbox.bind('<Return>', onpwdentry)
-    Button(root, command=onokclick, text='OK').pack(side='top')
+    pwdbox.pack(side="top")
+    pwdbox.bind("<Return>", onpwdentry)
+    Button(root, command=onokclick, text="OK").pack(side="top")
 
     root.mainloop()
     return store["pass"]
 
 
 TIMESTAMP_SERVER = "http://timestamp.comodoca.com/authenticode"
-SIGNTOOL = os.path.join(os.path.abspath(os.sep),
-                        "Program Files (x86)", "Windows Kits", "8.1", "bin", "x64", "signtool.exe")
+SIGNTOOL = os.path.join(
+    os.path.abspath(os.sep),
+    "Program Files (x86)",
+    "Windows Kits",
+    "8.1",
+    "bin",
+    "x64",
+    "signtool.exe",
+)
 
 
 def execute(pfxfile, exefile, gui=False, copy=None):
@@ -55,11 +62,18 @@ def execute(pfxfile, exefile, gui=False, copy=None):
     else:
         password = getpwd("Enter password for {}:".format(pfxfile))
 
-    cmd = [SIGNTOOL, "sign",
-           "/t", TIMESTAMP_SERVER,
-           "/p", password,
-           "/f", pfxfile,
-           "/v", exefile]
+    cmd = [
+        SIGNTOOL,
+        "sign",
+        "/t",
+        TIMESTAMP_SERVER,
+        "/p",
+        password,
+        "/f",
+        pfxfile,
+        "/v",
+        exefile,
+    ]
     subprocess.check_call(cmd)
     if copy:
         folder = os.path.dirname(copy)

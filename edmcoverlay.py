@@ -4,13 +4,12 @@ Client library for EDMCOverlay
 
 from __future__ import print_function
 
-import sys
-import socket
 import json
 import os
+import socket
 import subprocess
+import sys
 import time
-
 
 SERVER_ADDRESS = "127.0.0.1"
 SERVER_PORT = 5010
@@ -59,6 +58,7 @@ def find_server_program():
             return item
     return None
 
+
 _service = None
 
 
@@ -85,7 +85,7 @@ def ensure_service(args=[]):
     if not program:
         trace("EDMCOverlay.exe not found in any expected location")
         return
-        
+
     exedir = os.path.abspath(os.path.dirname(program))
 
     # see if it is alive
@@ -97,9 +97,9 @@ def ensure_service(args=[]):
         trace(f"Overlay server connection failed: {conn_err}")
     except Exception as err:
         trace(f"Unexpected error checking server status: {err}")
-        
+
     trace("Overlay server is not running, attempting to start...")
-    
+
     # if it isnt running, start it
     try:
         if _service:
@@ -109,35 +109,43 @@ def ensure_service(args=[]):
         if not _service:
             if check_game_running():
                 trace("EDMCOverlay is starting {} with {}".format(program, args))
-                prog_args = [program]+args if args else [program]
+                prog_args = [program] + args if args else [program]
                 try:
                     _service = subprocess.Popen(
-                        prog_args, 
+                        prog_args,
                         cwd=exedir,
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE
+                        stderr=subprocess.PIPE,
                     )
                 except FileNotFoundError as file_err:
-                    trace(f"Failed to start overlay server - file not found: {file_err}")
+                    trace(
+                        f"Failed to start overlay server - file not found: {file_err}"
+                    )
                     return
                 except PermissionError as perm_err:
-                    trace(f"Failed to start overlay server - permission denied: {perm_err}")
+                    trace(
+                        f"Failed to start overlay server - permission denied: {perm_err}"
+                    )
                     return
-                    
+
         time.sleep(2)
         if _service and _service.poll() is not None:
             stdout, stderr = _service.communicate()
             error_details = f"Exit code: {_service.returncode}"
             if stderr:
-                error_details += f", Error output: {stderr.decode('utf-8', errors='ignore')}"
+                error_details += (
+                    f", Error output: {stderr.decode('utf-8', errors='ignore')}"
+                )
             trace(f"Overlay server failed to start properly - {error_details}")
             try:
                 subprocess.check_call(prog_args, cwd=exedir)
             except subprocess.CalledProcessError as proc_err:
                 trace(f"Overlay server startup verification failed: {proc_err}")
                 return
-            raise RuntimeError(f"{program} exited with {_service.returncode}: {error_details}")
-            
+            raise RuntimeError(
+                f"{program} exited with {_service.returncode}: {error_details}"
+            )
+
     except subprocess.SubprocessError as sub_err:
         if check_game_running():
             trace(f"Subprocess error starting overlay server: {sub_err}")
@@ -171,16 +179,22 @@ class Overlay(object):
             connection.settimeout(10.0)  # Add timeout
             connection.connect((self.server, self.port))
             self.connection = connection
-            trace(f"Successfully connected to overlay server at {self.server}:{self.port}")
+            trace(
+                f"Successfully connected to overlay server at {self.server}:{self.port}"
+            )
         except socket.timeout:
-            raise ConnectionError(f"Timeout connecting to overlay server at {self.server}:{self.port}")
+            raise ConnectionError(
+                f"Timeout connecting to overlay server at {self.server}:{self.port}"
+            )
         except ConnectionRefusedError:
-            raise ConnectionError(f"Connection refused by overlay server at {self.server}:{self.port}")
+            raise ConnectionError(
+                f"Connection refused by overlay server at {self.server}:{self.port}"
+            )
         except socket.gaierror as e:
             raise ConnectionError(f"DNS resolution failed for {self.server}: {e}")
         except OSError as e:
             raise ConnectionError(f"Network error connecting to overlay server: {e}")
-    
+
     def send_raw(self, msg):
         """
         Encode a dict and send it to the server with improved error handling
@@ -197,15 +211,17 @@ class Overlay(object):
 
         try:
             # Validate message structure
-            if 'id' not in msg:
-                trace("Warning: Message without 'id' field may not be processed correctly")
-            
+            if "id" not in msg:
+                trace(
+                    "Warning: Message without 'id' field may not be processed correctly"
+                )
+
             data = json.dumps(msg, ensure_ascii=True)
-            
+
             # Add length validation
             if len(data) > 10000:  # 10KB limit
                 raise ValueError(f"Message too large: {len(data)} bytes (max 10000)")
-            
+
             if sys.version_info.major >= 3:
                 encoded_data = data.encode("utf-8")
                 self.connection.send(encoded_data)
@@ -213,9 +229,9 @@ class Overlay(object):
             else:
                 self.connection.send(data)
                 self.connection.send("\n")
-                
+
             trace(f"Successfully sent message with ID: {msg.get('id', 'unknown')}")
-            
+
         except json.JSONEncodeError as json_err:
             self.connection = None
             raise ValueError(f"Failed to encode message as JSON: {json_err}")
@@ -251,14 +267,17 @@ class Overlay(object):
             ensure_service(self.args)
             self.connect()
 
-        msg = {"id": shapeid,
-               "shape": shape,
-               "color": color,
-               "fill": fill,
-               "x": x, "y": y,
-               "w": w, "h": h,
-               "ttl": ttl
-               }
+        msg = {
+            "id": shapeid,
+            "shape": shape,
+            "color": color,
+            "fill": fill,
+            "x": x,
+            "y": y,
+            "w": w,
+            "h": h,
+            "ttl": ttl,
+        }
         self.send_raw(msg)
 
     def send_message(self, msgid, text, color, x, y, ttl=4, size="normal"):
@@ -277,12 +296,15 @@ class Overlay(object):
             ensure_service(self.args)
             self.connect()
 
-        msg = {"id": msgid,
-               "color": color,
-               "text": text,
-               "size": size,
-               "x": x, "y": y,
-               "ttl": ttl}
+        msg = {
+            "id": msgid,
+            "color": color,
+            "text": text,
+            "size": size,
+            "x": x,
+            "y": y,
+            "ttl": ttl,
+        }
         self.send_raw(msg)
 
 
@@ -291,6 +313,7 @@ def debugconsole():
     Print stuff
     """
     import load as loader
+
     loader.plugin_start()
 
     cl = Overlay()

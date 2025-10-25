@@ -1,17 +1,27 @@
 """
 Plugin for EDMCOverlay - Enhanced Version
 """
-import os
+
 import logging
+import os
 from typing import Optional
 
 # Try to use the improved version first, fallback to legacy if needed
 try:
-    from edmcoverlay_improved import Overlay, ServiceManager, OverlayConnectionError, trace
-    from edmcoverlay import ensure_service  # Keep legacy service management for compatibility
+    from edmcoverlay import (  # Keep legacy service management for compatibility
+        ensure_service,
+    )
+    from edmcoverlay_improved import (
+        Overlay,
+        OverlayConnectionError,
+        ServiceManager,
+        trace,
+    )
+
     USING_IMPROVED = True
 except ImportError:
-    from edmcoverlay import ensure_service, Overlay, trace
+    from edmcoverlay import Overlay, ensure_service, trace
+
     USING_IMPROVED = False
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,23 +46,32 @@ def plugin_start():
     :return:
     """
     global client
-    
+
     if USING_IMPROVED:
         # Use improved version with context management
         try:
             service_manager.ensure_service()
             client = Overlay()
-            
+
             with client:
-                client.send_message("edmcintro", trace("EDMC Ready (Enhanced)"), "green", 30, 165, ttl=6)
-                
+                client.send_message(
+                    "edmcintro", trace("EDMC Ready (Enhanced)"), "green", 30, 165, ttl=6
+                )
+
         except OverlayConnectionError as err:
             print(f"Enhanced overlay connection failed: {err}")
             # Fallback to legacy service management
             ensure_service()
             client = Overlay()
             try:
-                client.send_message("edmcintro", trace("EDMC Ready (Fallback)"), "yellow", 30, 165, ttl=6)
+                client.send_message(
+                    "edmcintro",
+                    trace("EDMC Ready (Fallback)"),
+                    "yellow",
+                    30,
+                    165,
+                    ttl=6,
+                )
             except Exception as fallback_err:
                 print(f"Fallback also failed: {fallback_err}")
         except Exception as err:
@@ -64,10 +83,12 @@ def plugin_start():
         # Legacy version
         ensure_service()
         try:
-            client.send_message("edmcintro", trace("EDMC Ready"), "yellow", 30, 165, ttl=6)
+            client.send_message(
+                "edmcintro", trace("EDMC Ready"), "yellow", 30, 165, ttl=6
+            )
         except Exception as err:
             print("Error sending message in plugin_start() : {}".format(err))
-            
+
     return "EDMCOverlay"
 
 
@@ -104,7 +125,7 @@ def plugin_stop():
     :return:
     """
     global client
-    
+
     if USING_IMPROVED:
         # Use improved cleanup
         try:
@@ -113,10 +134,10 @@ def plugin_stop():
                 with client:
                     client.send_raw({"command": "exit"})
                 client = None
-                
+
             if service_manager:
                 service_manager.stop_service()
-                
+
         except Exception as err:
             print(f"Error during enhanced cleanup: {err}")
     else:
@@ -136,5 +157,5 @@ def get_client_info():
         "using_improved": USING_IMPROVED,
         "client_type": "Enhanced" if USING_IMPROVED else "Legacy",
         "has_service_manager": USING_IMPROVED and service_manager is not None,
-        "client_active": client is not None
+        "client_active": client is not None,
     }
