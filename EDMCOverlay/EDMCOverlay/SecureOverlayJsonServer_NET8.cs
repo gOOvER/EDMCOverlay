@@ -381,9 +381,9 @@ public sealed partial class SecureOverlayJsonServer : BackgroundService, IDispos
             var graphic = CreateGraphicFromMessage(message, clientInfo.ClientId);
             if (graphic != null)
             {
-                _graphics.AddOrUpdate(graphic.Id, graphic, (key, oldValue) => graphic);
+                _graphics.AddOrUpdate(graphic.RealGraphic.Id, graphic, (key, oldValue) => graphic);
                 _logger.LogDebug("Updated graphic '{GraphicId}' from client {ClientId}", 
-                    graphic.Id, clientInfo.ClientId);
+                    graphic.RealGraphic.Id, clientInfo.ClientId);
             }
         }
         catch (Exception ex)
@@ -433,14 +433,14 @@ public sealed partial class SecureOverlayJsonServer : BackgroundService, IDispos
                 ttl = ttlElement.GetInt32();
             }
 
-            var graphic = new InternalGraphic
+            // Create a Graphic object to match the legacy constructor
+            var realGraphic = new Graphic
             {
                 Id = id,
-                ClientId = clientId,
-                TTL = ttl,
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddSeconds(ttl)
+                TTL = ttl
             };
+
+            var graphic = new InternalGraphic(realGraphic, int.Parse(clientId));
 
             return graphic;
         }
@@ -471,7 +471,7 @@ public sealed partial class SecureOverlayJsonServer : BackgroundService, IDispos
         {
             var now = DateTime.UtcNow;
             var expiredKeys = _graphics
-                .Where(kvp => kvp.Value.IsExpired(now))
+                .Where(kvp => kvp.Value.Expired)
                 .Select(kvp => kvp.Key)
                 .ToArray(); // Materialize to avoid collection modification issues
 

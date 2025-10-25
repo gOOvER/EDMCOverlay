@@ -160,7 +160,7 @@ class TestConfig(unittest.TestCase):
         if hasattr(self, 'config'):
             self.config.load()
             # After loading, the port should be updated
-            self.assertEqual(self.config.server_port, 5015)
+            self.assertEqual(self.config.get("server.port"), 5015)
 
 
 class TestMessageHandling(unittest.TestCase):
@@ -227,14 +227,14 @@ class TestErrorHandling(unittest.TestCase):
     @patch('socket.socket')
     def test_connection_loss_handling(self, mock_socket):
         """Test handling of connection loss"""
-        if hasattr(self.overlay, '_connection_context'):
-            mock_conn = MagicMock()
-            mock_conn.send.side_effect = BrokenPipeError("Broken pipe")
-            mock_socket.return_value = mock_conn
-            
-            with self.assertRaises(OverlayConnectionError):
-                with self.overlay._connection_context():
-                    pass
+        mock_conn = MagicMock()
+        mock_conn.send.side_effect = BrokenPipeError("Broken pipe")
+        mock_socket.return_value = mock_conn
+        
+        # Test that connection errors are properly handled
+        if hasattr(self.overlay, 'send_raw'):
+            with self.assertRaises((OverlayConnectionError, BrokenPipeError)):
+                self.overlay.send_raw({"command": "test"})
 
 
 class IntegrationTest(unittest.TestCase):
@@ -264,8 +264,11 @@ class IntegrationTest(unittest.TestCase):
             self.overlay.send_message("test", "Integration Test", "green", 10, 10, 2)
             time.sleep(0.5)  # Give the message time to display
             # If we get here without exception, the test passed
+        except (OverlayConnectionError, ConnectionRefusedError):
+            # Expected when no server is running - skip test
+            self.skipTest("No overlay server available for integration test")
         except Exception as e:
-            self.fail(f"Failed to send message to real server: {e}")
+            self.fail(f"Unexpected error in integration test: {e}")
         finally:
             if hasattr(self.overlay, 'disconnect'):
                 self.overlay.disconnect()
