@@ -56,10 +56,10 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         
     - name: Restore dependencies
-      run: dotnet restore EDMCOverlay/EDMCOverlay/EDMCOverlay.csproj
+      run: dotnet restore EDMCOverlay/EDMCOverlay/EDMCOverlay_Modern.csproj
       
     - name: Build application
-      run: dotnet build EDMCOverlay/EDMCOverlay/EDMCOverlay.csproj --configuration Release --no-restore
+      run: dotnet build EDMCOverlay/EDMCOverlay/EDMCOverlay_Modern.csproj --configuration Release --no-restore
       
     - name: Run C# tests (if any)
       run: |
@@ -71,7 +71,7 @@ jobs:
       shell: powershell
       
     - name: Publish application
-      run: dotnet publish EDMCOverlay/EDMCOverlay/EDMCOverlay.csproj --configuration Release --output ./publish --no-build
+      run: dotnet publish EDMCOverlay/EDMCOverlay/EDMCOverlay_Modern.csproj --configuration Release --output ./publish --no-build
       
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4

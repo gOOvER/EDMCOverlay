@@ -103,7 +103,7 @@ def plugin_stop():
     Enhanced version with proper cleanup
     :return:
     """
-    global client, service_manager
+    global client
     
     if USING_IMPROVED:
         # Use improved cleanup
