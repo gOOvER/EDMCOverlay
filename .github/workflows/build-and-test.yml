@@ -1,0 +1,227 @@
+name: Build and Test EDMCOverlay
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master ]
+  release:
+    types: [ published ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  test-python:
+    name: Test Python Components
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov pytest-mock
+        pip install typing-extensions
+        
+    - name: Run Python tests
+      run: |
+        python -m pytest test_comprehensive.py -v --cov=edmcoverlay --cov-report=xml
+        
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: python
+        name: python-coverage
+        
+  build-csharp:
+    name: Build C# Application
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Restore dependencies
+      run: dotnet restore EDMCOverlay/EDMCOverlay/EDMCOverlay.csproj
+      
+    - name: Build application
+      run: dotnet build EDMCOverlay/EDMCOverlay/EDMCOverlay.csproj --configuration Release --no-restore
+      
+    - name: Run C# tests (if any)
+      run: |
+        if (Test-Path "EDMCOverlay/Tests") {
+          dotnet test EDMCOverlay/Tests --configuration Release --no-build --verbosity normal
+        } else {
+          Write-Host "No C# tests found"
+        }
+      shell: powershell
+      
+    - name: Publish application
+      run: dotnet publish EDMCOverlay/EDMCOverlay/EDMCOverlay.csproj --configuration Release --output ./publish --no-build
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: edmcoverlay-build
+        path: ./publish/
+        retention-days: 30
+
+  security-scan:
+    name: Security Scan
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run Bandit Security Linter
+      run: |
+        pip install bandit
+        bandit -r . -f json -o bandit-report.json || true
+        
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-scan-results
+        path: bandit-report.json
+        
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install code quality tools
+      run: |
+        pip install flake8 black isort mypy
+        
+    - name: Run flake8
+      run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      
+    - name: Check code formatting with black
+      run: black --check --diff .
+      
+    - name: Check import sorting
+      run: isort --check-only --diff .
+      
+    - name: Run type checking
+      run: mypy edmcoverlay.py edmcoverlay_improved.py --ignore-missing-imports
+      
+  integration-test:
+    name: Integration Tests
+    runs-on: windows-latest
+    needs: [build-csharp]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: edmcoverlay-build
+        path: ./build/
+        
+    - name: Run integration tests
+      run: |
+        python -c "
+        import sys
+        sys.path.append('.')
+        try:
+            from edmcoverlay_improved import Overlay
+            print('✓ Import test passed')
+            
+            # Test configuration
+            from config import Config
+            config = Config()
+            print(f'✓ Configuration test passed - Port: {config.server_port}')
+            
+            print('✓ All integration tests passed')
+        except Exception as e:
+            print(f'✗ Integration test failed: {e}')
+            sys.exit(1)
+        "
+        
+  create-release:
+    name: Create Release
+    runs-on: windows-latest
+    needs: [test-python, build-csharp, security-scan, code-quality, integration-test]
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: edmcoverlay-build
+        path: ./release/
+        
+    - name: Create release package
+      run: |
+        Compress-Archive -Path "./release/*" -DestinationPath "EDMCOverlay-${{ github.event.release.tag_name }}.zip"
+      shell: powershell
+      
+    - name: Upload release asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./EDMCOverlay-${{ github.event.release.tag_name }}.zip
+        asset_name: EDMCOverlay-${{ github.event.release.tag_name }}.zip
+        asset_content_type: application/zip
+
+  notify:
+    name: Notify Results
+    runs-on: windows-latest
+    needs: [test-python, build-csharp, security-scan, code-quality]
+    if: always()
+    
+    steps:
+    - name: Notify success
+      if: ${{ needs.test-python.result == 'success' && needs.build-csharp.result == 'success' }}
+      run: |
+        echo "✅ All checks passed successfully!"
+        echo "Python tests: ${{ needs.test-python.result }}"
+        echo "C# build: ${{ needs.build-csharp.result }}"
+        echo "Security scan: ${{ needs.security-scan.result }}"
+        echo "Code quality: ${{ needs.code-quality.result }}"
+        
+    - name: Notify failure
+      if: ${{ needs.test-python.result == 'failure' || needs.build-csharp.result == 'failure' }}
+      run: |
+        echo "❌ Some checks failed!"
+        echo "Python tests: ${{ needs.test-python.result }}"
+        echo "C# build: ${{ needs.build-csharp.result }}"
+        echo "Security scan: ${{ needs.security-scan.result }}"
+        echo "Code quality: ${{ needs.code-quality.result }}"
+        exit 1
