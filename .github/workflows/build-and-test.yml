@@ -155,16 +155,16 @@ jobs:
         sys.path.append('.')
         try:
             from edmcoverlay_improved import Overlay
-            print('✓ Import test passed')
+            print('[PASS] Import test passed')
             
             # Test configuration
             from config import Config
             config = Config()
-            print(f'✓ Configuration test passed - Port: {config.server_port}')
+            print(f'[PASS] Configuration test passed - Port: {config.server_port}')
             
-            print('✓ All integration tests passed')
+            print('[PASS] All integration tests passed')
         except Exception as e:
-            print(f'✗ Integration test failed: {e}')
+            print(f'[FAIL] Integration test failed: {e}')
             sys.exit(1)
         "
         
