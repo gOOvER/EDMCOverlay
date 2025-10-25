@@ -45,7 +45,7 @@ namespace EDMCOverlay
             this.AutoScaleMode = AutoScaleMode.None;
             this.DoubleBuffered = true;          
             this.ClientSize = new Size(100, 100);
-            var version = Assembly.GetEntryAssembly().GetName().Version;
+            var version = Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(1, 0, 0, 0);
             this.Name = $"EDMC Overlay V{version}";
             this.FormBorderStyle = FormBorderStyle.None;
             this.ControlBox = false;
