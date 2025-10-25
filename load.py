@@ -20,7 +20,7 @@ try:
 
     USING_IMPROVED = True
 except ImportError:
-    from edmcoverlay import Overlay, ensure_service, trace
+    from edmcoverlay import Overlay, ensure_service, trace  # type: ignore
 
     USING_IMPROVED = False
 
@@ -83,9 +83,10 @@ def plugin_start():
         # Legacy version
         ensure_service()
         try:
-            client.send_message(
-                "edmcintro", trace("EDMC Ready"), "yellow", 30, 165, ttl=6
-            )
+            if client:
+                client.send_message(
+                    "edmcintro", trace("EDMC Ready"), "yellow", 30, 165, ttl=6
+                )
         except Exception as err:
             print("Error sending message in plugin_start() : {}".format(err))
 
@@ -143,7 +144,8 @@ def plugin_stop():
     else:
         # Legacy cleanup
         try:
-            client.send_raw({"command": "exit"})
+            if client:
+                client.send_raw({"command": "exit"})
         except Exception as err:
             print(f"Error during legacy cleanup: {err}")
 

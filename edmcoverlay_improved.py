@@ -59,16 +59,6 @@ class OverlayServiceError(Exception):
     pass
 
 
-def trace(msg: str) -> str:
-    """
-    Print a trace message with proper logging
-    :param msg: Message to trace
-    :return: The message
-    """
-    logger.info(f"EDMCOverlay: {msg}")
-    return msg
-
-
 class ServiceManager:
     """Manages the overlay service lifecycle"""
 
@@ -104,20 +94,20 @@ class ServiceManager:
         """Check if Elite Dangerous is running"""
         if not monitor:
             return True
-        return monitor.monitor.game_running()
+        return bool(monitor.monitor.game_running())
 
     def is_service_alive(self) -> bool:
         """Check if the overlay service is responding"""
         try:
             test_overlay = Overlay()
             test_overlay.connect()
-            test_overlay.send_message(0, ".", "black", 0, 0, 1)
+            test_overlay.send_message("test", ".", "black", 0, 0, 1)
             test_overlay.disconnect()
             return True
         except Exception:
             return False
 
-    def ensure_service(self, args: List[str] = None) -> None:
+    def ensure_service(self, args: Optional[List[str]] = None) -> None:
         """
         Start the overlay service program with proper error handling
         :param args: Additional arguments for the service
@@ -201,7 +191,7 @@ class Overlay:
         self,
         server: str = DEFAULT_SERVER_ADDRESS,
         port: int = DEFAULT_SERVER_PORT,
-        args: List[str] = None,
+        args: Optional[List[str]] = None,
     ):
         self.server = server
         self.port = port
@@ -439,7 +429,7 @@ internal = Overlay()
 
 
 # Expose service manager functions for backward compatibility
-def ensure_service(args: List[str] = None) -> None:
+def ensure_service(args: Optional[List[str]] = None) -> None:
     """Ensure overlay service is running"""
     _service_manager.ensure_service(args)
 
