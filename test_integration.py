@@ -17,12 +17,12 @@ try:
         plugin_stop,
     )
 
-    print("🧪 Testing Enhanced Load.py Integration")
+    print("[TEST] Testing Enhanced Load.py Integration")
     print("=" * 50)
 
     # Test client info
     info = get_client_info()
-    print(f"📊 Client Info:")
+    print("[INFO] Client Info:")
     print(f"   Using Improved: {info['using_improved']}")
     print(f"   Client Type: {info['client_type']}")
     print(f"   Service Manager: {info['has_service_manager']}")
@@ -30,33 +30,33 @@ try:
     print()
 
     # Test plugin functions
-    print("🚀 Testing Plugin Functions:")
+    print("[RUN] Testing Plugin Functions:")
 
     # Test plugin start
     try:
         result = plugin_start()
-        print(f"✅ plugin_start() returned: {result}")
+        print(f"[PASS] plugin_start() returned: {result}")
     except Exception as e:
-        print(f"❌ plugin_start() failed: {e}")
+        print(f"[FAIL] plugin_start() failed: {e}")
 
     # Test journal entry
     try:
         journal_entry("TestCmdr", False, "Sol", "Abraham Lincoln", {}, {})
-        print("✅ journal_entry() executed successfully")
+        print("[PASS] journal_entry() executed successfully")
     except Exception as e:
-        print(f"❌ journal_entry() failed: {e}")
+        print(f"[FAIL] journal_entry() failed: {e}")
 
     # Test plugin stop
     try:
         plugin_stop()
-        print("✅ plugin_stop() executed successfully")
+        print("[PASS] plugin_stop() executed successfully")
     except Exception as e:
-        print(f"❌ plugin_stop() failed: {e}")
+        print(f"[FAIL] plugin_stop() failed: {e}")
 
     print()
-    print("✅ Integration test completed!")
+    print("[PASS] Integration test completed!")
 
 except ImportError as e:
-    print(f"❌ Import error: {e}")
+    print(f"[FAIL] Import error: {e}")
 except Exception as e:
-    print(f"❌ Unexpected error: {e}")
+    print(f"[FAIL] Unexpected error: {e}")
